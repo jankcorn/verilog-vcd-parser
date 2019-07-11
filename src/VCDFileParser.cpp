@@ -83,6 +83,7 @@ int main (int argc, char** argv){
 
     VCDFile * trace = parser.parse_file(infile);
 
+printf("\n[%s:%d]DONE\n", __FUNCTION__, __LINE__); return 0;
     if(trace) {
         std::cout << "Parse successful." << std::endl;
         std::cout << "Version:       " << trace -> version << std::endl;
