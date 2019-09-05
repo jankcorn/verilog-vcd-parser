@@ -100,6 +100,7 @@ VCDScope * VCDFile::get_scope(
                 return 'X';
         }
     }
+std::map<std::string, std::string> mapValue;
 void VCDFile::add_signal_value(
     VCDTimedValue * time_val,
     VCDSignalHash   hash
@@ -117,13 +118,11 @@ void VCDFile::add_signal_value(
         static int lastTime = -1;
         int thisTime = (int) time_val->time;
         if (thisTime) {
-            char buffer[1000];
-            sprintf(buffer, "[%5d]", thisTime);
-            std::string timeVal = buffer;
-            if (thisTime == lastTime)
-                timeVal = "       ";
-            else {
-                printf("\n%s", timeVal.c_str());
+            if (thisTime != lastTime) {
+                for (auto item: mapValue)
+                     printf(" %s = %s", item.first.c_str(), item.second.c_str());
+                printf("\n[%5d]", thisTime);
+                mapValue.clear();
             }
             std::string val;
             switch (time_val->value->get_type()) {
@@ -140,7 +139,8 @@ void VCDFile::add_signal_value(
             default:
 printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
             }
-            printf(" %s = %s", name.c_str(), val.c_str());
+            mapValue[name] = val;
+            //printf(" %s = %s", name.c_str(), val.c_str());
         }
         lastTime = thisTime;
     }
