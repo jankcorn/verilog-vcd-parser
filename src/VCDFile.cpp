@@ -190,8 +190,9 @@ void VCDFile::add_signal_value(
     VCDSignalHash   hash
 ){
     std::string name = mapName[hash];
-
     std::string val;
+    static int lasttime = 0;
+    int timeval = time_val->time;
     switch (time_val->value->get_type()) {
     case VCD_SCALAR:
         val = VCDBit2Char(time_val->value->get_value_bit());
@@ -199,6 +200,24 @@ void VCDFile::add_signal_value(
     case VCD_VECTOR:
         for (auto item: *time_val->value->get_value_vector())
             val += VCDBit2Char(item);
+        if (val.find("X") == std::string::npos && val.find("Z") == std::string::npos) {
+            int len = val.length() / 4;
+            int addLen = val.length() - len * 4;
+            std::string temp = std::string("00000000").substr(0, addLen) + val;
+            val = "";
+            unsigned i = 0;
+            int data = 0;
+            while (i < temp.length()) {
+                if (i && (i % 32) == 0)
+                    val += "_";
+                data = (data << 1) + (temp[i] - '0');
+                i++;
+                if ((i % 4) == 0) {
+                    val += "0123456789abcdef"[data];
+                    data = 0;
+                }
+            }
+        }
         break;
     case VCD_REAL:
         val = "REAL";
@@ -206,7 +225,14 @@ void VCDFile::add_signal_value(
     default:
 printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
     }
-printf("[%s:%d] name %s val %s time %d\n", __FUNCTION__, __LINE__, name.c_str(), val.c_str(), (int)time_val->time);
+    if (timeval != 0 || (val.find_first_not_of("0") != std::string::npos
+                      && val.find_first_not_of("_") != std::string::npos)) {
+        if (lasttime != timeval) {
+            printf("---------------------------------------- %d ------------------------------------------\n", timeval);
+            lasttime = timeval;
+        }
+        printf(" %40s = %8s\n", name.c_str(), val.c_str());
+    }
     if (0)
     if (!startswith(name, "CLK")
      && name != "waitForEnq"
