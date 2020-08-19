@@ -151,6 +151,7 @@ declaration_command :
 
     VCDScope * scope = driver.scopes.top();
     scope -> signals.push_back(new_signal);
+    new_signal->scope = scope;
 
     driver.fh -> add_signal(new_signal);
 
