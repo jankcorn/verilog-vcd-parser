@@ -18,6 +18,21 @@ static bool inline startswith(std::string str, std::string suffix)
 {
     return str.substr(0, suffix.length()) == suffix;
 }
+static inline std::string autostr(uint64_t X, bool isNeg = false)
+{
+  char Buffer[21];
+  char *BufPtr = std::end(Buffer);
+
+  if (X == 0) *--BufPtr = '0';  // Handle special case...
+
+  while (X) {
+    *--BufPtr = '0' + char(X % 10);
+    X /= 10;
+  }
+
+  if (isNeg) *--BufPtr = '-';   // Add negative sign...
+  return std::string(BufPtr, std::end(Buffer));
+}
 
 /*!
 @brief Top level object to represent a single VCD file.
