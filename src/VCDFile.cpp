@@ -49,6 +49,31 @@ VCDFile::~VCDFile(){
 void VCDFile::add_scope(
     VCDScope * s
 ){
+    std::string stype;
+    switch (s->type) {
+    case VCD_SCOPE_BEGIN:
+        stype = "BEGIN";
+        break;
+    case VCD_SCOPE_FORK:
+        stype = "FORK";
+        break;
+    case VCD_SCOPE_FUNCTION:
+        stype = "FUNCTION";
+        break;
+    case VCD_SCOPE_MODULE:
+        stype = "MODULE";
+        break;
+    case VCD_SCOPE_TASK:
+        stype = "TASK";
+        break;
+    case VCD_SCOPE_ROOT:
+        stype = "ROOT";
+        break;
+    default:
+        stype = "UNK_" + autostr(s->type);
+        break;
+    }
+printf("[%s:%d] type %s name %s\n", __FUNCTION__, __LINE__, stype.c_str(), s->name.c_str());
     this -> scopes.push_back(s);
 }
 
@@ -61,8 +86,67 @@ void VCDFile::add_signal(
     VCDSignal * s
 ){
     this -> signals.push_back(s);
-
-//printf("[%s:%d] hash %s ref %s scope %p size %x type %d\n", __FUNCTION__, __LINE__, s->hash.c_str(), s->reference.c_str(), s->scope, s->size, s->type);
+    std::string stype;
+    switch(s->type) {
+    case VCD_VAR_EVENT:
+        stype = "EVENT";
+        break;
+    case VCD_VAR_INTEGER:
+        stype = "INTEGER";
+        break;
+    case VCD_VAR_PARAMETER:
+        stype = "PARAMETER";
+        break;
+    case VCD_VAR_REAL:
+        stype = "REAL";
+        break;
+    case VCD_VAR_REALTIME:
+        stype = "REALTIME";
+        break;
+    case VCD_VAR_REG:
+        stype = "REG";
+        break;
+    case VCD_VAR_SUPPLY0:
+        stype = "SUPPLY0";
+        break;
+    case VCD_VAR_SUPPLY1:
+        stype = "SUPPLY1";
+        break;
+    case VCD_VAR_TIME:
+        stype = "TIME";
+        break;
+    case VCD_VAR_TRI:
+        stype = "TRI";
+        break;
+    case VCD_VAR_TRIAND:
+        stype = "TRIAND";
+        break;
+    case VCD_VAR_TRIOR:
+        stype = "TRIOR";
+        break;
+    case VCD_VAR_TRIREG:
+        stype = "TRIREG";
+        break;
+    case VCD_VAR_TRI0:
+        stype = "TRI0";
+        break;
+    case VCD_VAR_TRI1:
+        stype = "TRI1";
+        break;
+    case VCD_VAR_WAND:
+        stype = "WAND";
+        break;
+    case VCD_VAR_WIRE:
+        stype = "WIRE";
+        break;
+    case VCD_VAR_WOR:
+        stype = "WOR";
+        break;
+    default:
+        stype = "UNK_" + autostr(s->type);
+        break;
+    };
+printf("[%s:%d] hash %s ref %s scope %p size %x type %s\n", __FUNCTION__, __LINE__, s->hash.c_str(), s->reference.c_str(), s->scope, s->size, stype.c_str());
 if (mapName[s->hash] != "" && mapName[s->hash] != s->reference) {
 //printf("[%s:%d] ERROR: hash %s was %s now %s\n", __FUNCTION__, __LINE__, s->hash.c_str(), mapName[s->hash].c_str(), s->reference.c_str());
 }
