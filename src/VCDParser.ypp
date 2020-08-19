@@ -171,11 +171,11 @@ simulation_command :
 ;
 
 scope_type :
-    TOK_KW_BEGIN
-|   TOK_KW_FORK
-|   TOK_KW_FUNCTION
-|   TOK_KW_MODULE
-|   TOK_KW_TASK
+    TOK_KW_BEGIN { $$ = $1; }
+|   TOK_KW_FORK { $$ = $1; }
+|   TOK_KW_FUNCTION { $$ = $1; }
+|   TOK_KW_MODULE { $$ = $1; }
+|   TOK_KW_TASK { $$ = $1; }
 ;
 
 simulation_time : TOK_HASH TOK_DECIMAL_NUM {
@@ -215,7 +215,7 @@ vector_value_change:
     VCDBitVector * vec = new VCDBitVector();
     VCDValue * val = new VCDValue(vec);
 
-    for(int i =1; i < $1.size(); i ++) {
+    for(unsigned i =1; i < $1.size(); i ++) {
         switch($1[i]) {
             case '0':
                 vec -> push_back(VCD_0);

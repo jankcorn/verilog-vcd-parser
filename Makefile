@@ -1,4 +1,5 @@
 
+CXXFLAGS += -Wall
 SRC_DIR         ?= ./src
 BUILD_DIR       ?= ./build
 
