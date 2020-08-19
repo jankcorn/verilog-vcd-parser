@@ -190,6 +190,24 @@ void VCDFile::add_signal_value(
     VCDSignalHash   hash
 ){
     std::string name = mapName[hash];
+
+    std::string val;
+    switch (time_val->value->get_type()) {
+    case VCD_SCALAR:
+        val = VCDBit2Char(time_val->value->get_value_bit());
+        break;
+    case VCD_VECTOR:
+        for (auto item: *time_val->value->get_value_vector())
+            val += VCDBit2Char(item);
+        break;
+    case VCD_REAL:
+        val = "REAL";
+        break;
+    default:
+printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
+    }
+printf("[%s:%d] name %s val %s time %d\n", __FUNCTION__, __LINE__, name.c_str(), val.c_str(), (int)time_val->time);
+    if (0)
     if (!startswith(name, "CLK")
      && name != "waitForEnq"
      && name != "buffer[:]"
@@ -207,21 +225,6 @@ void VCDFile::add_signal_value(
                      printf(" %s = %s", item.first.c_str(), item.second.c_str());
                 printf("\n[%5d]", thisTime);
                 mapValue.clear();
-            }
-            std::string val;
-            switch (time_val->value->get_type()) {
-            case VCD_SCALAR:
-                val = VCDBit2Char(time_val->value->get_value_bit());
-                break;
-            case VCD_VECTOR:
-                for (auto item: *time_val->value->get_value_vector())
-                    val += VCDBit2Char(item);
-                break;
-            case VCD_REAL:
-                val = "REAL";
-                break;
-            default:
-printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
             }
             mapValue[name] = val;
             //printf(" %s = %s", name.c_str(), val.c_str());
