@@ -3,29 +3,30 @@
 #include <list>
 
 #include "VCDFile.hpp"
-        
-        
+
+bool filterENARDY = true;
+
 //! Instance a new VCD file container.
 VCDFile::VCDFile(){
 
 }
-        
+
 //! Destructor
 VCDFile::~VCDFile(){
 
     // Delete signals and scopes.
 
     for (VCDScope * scope : this -> scopes) {
-    
+
         for (VCDSignal * signal : scope -> signals) {
             delete signal;
         }
-        
+
         delete scope;
     }
 
     // Delete signal values.
-    
+
     for(auto hash_val = this -> val_map.begin();
              hash_val != this -> val_map.end();
              ++hash_val)
@@ -85,6 +86,8 @@ void VCDFile::add_signal( VCDSignal * s)
     if (mapName.find(s->hash) == mapName.end())
         mapName[s->hash] = new MapNameItem({{}, false});
     bool isRdy = s->reference.find("__RDY") != std::string::npos;
+    bool isEna = s->reference.find("__ENA") != std::string::npos;
+    if (!filterENARDY || isRdy || isEna)
     if (parent.find("$") == std::string::npos || mapName[s->hash]->name.size() == 0) {  // don't push internal wire names
         mapName[s->hash]->isRdy |= isRdy;
         mapName[s->hash]->name.push_back(parent);
@@ -185,7 +188,8 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
              printf("%s %50s", sep.c_str(), item.c_str());
              sep = "\n";
         }
-        printf(" = %8s\n", val.c_str());
+        if (sep != "")
+            printf(" = %8s\n", val.c_str());
         }
     }
     std::string name;
@@ -240,22 +244,19 @@ std::vector<VCDSignal*>* VCDFile::get_signals(){
 
 /*!
 */
-void VCDFile::add_timestamp(
-    VCDTime time
-){
+void VCDFile::add_timestamp( VCDTime time)
+{
     this -> times.push_back(time);
 }
 
 /*!
 */
-VCDValue * VCDFile::get_signal_value_at (
-    VCDSignalHash hash,
-    VCDTime       time
-){
+VCDValue * VCDFile::get_signal_value_at ( VCDSignalHash hash, VCDTime       time)
+{
     if(this -> val_map.find(hash) == this -> val_map.end()) {
         return nullptr;
     }
-    
+
     VCDSignalValues * vals = this -> val_map[hash];
 
     if(vals -> size() == 0) {
@@ -276,4 +277,5 @@ VCDValue * VCDFile::get_signal_value_at (
     }
 
     return tr;
+
 }
