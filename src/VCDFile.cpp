@@ -58,10 +58,6 @@ void VCDFile::add_signal( VCDSignal * s)
     parent += s->reference;    // combine parent and node names
     if (mapName.find(s->hash) == mapName.end())
         mapName[s->hash] = new MapNameItem({{}, false, false});
-    bool isRdy = s->reference.find("__RDY") != std::string::npos;
-    bool isEna = s->reference.find("__ENA") != std::string::npos;
-    mapName[s->hash]->isRdy |= isRdy;
-    mapName[s->hash]->isEna |= isEna;
     mapName[s->hash]->name.push_back(parent);
     // Add a timestream entry
     if(val_map.find(s -> hash) == val_map.end()) {
@@ -81,10 +77,15 @@ void VCDFile::add_signal_value( VCDTimedValue * time_val, VCDSignalHash   hash)
         first = false;
         for (auto itemi = mapName.begin(), iteme = mapName.end(); itemi != iteme; itemi++) {
             for (auto namei = itemi->second->name.begin(), namee = itemi->second->name.end(); namei != namee;) {
-                if ((*namei).find("$") != std::string::npos && itemi->second->name.size() != 1 && (itemi->second->isRdy || itemi->second->isEna))
+                bool isRdy = namei->find("__RDY") != std::string::npos;
+                bool isEna = namei->find("__ENA") != std::string::npos;
+                if ((*namei).find("$") != std::string::npos && itemi->second->name.size() != 1 && (isRdy || isEna)) {
                     namei = itemi->second->name.erase(namei);
-                else
-                    namei++;
+                    continue;
+                }
+                itemi->second->isRdy |= isRdy;
+                itemi->second->isEna |= isEna;
+                namei++;
             }
         }
     }
@@ -170,6 +171,7 @@ break;
 
 void VCDFile::done(void)
 {
+if (0)
     for (auto item: mapName) {
         if (item.second->used) {
             std::string start = "*";
