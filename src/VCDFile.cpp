@@ -16,6 +16,83 @@ std::map<std::string, MapNameItem *> mapName;
 
 std::map<VCDScope *, std::string> scopeName;
 std::map<std::string, std::string> mapValue;
+std::map<std::string, std::string> currentValue;
+
+static bool inline endswith(std::string str, std::string suffix)
+{
+    int skipl = str.length() - suffix.length();
+    return skipl >= 0 && str.substr(skipl) == suffix;
+}
+static bool inline startswith(std::string str, std::string suffix)
+{
+    return str.substr(0, suffix.length()) == suffix;
+}
+static inline std::string autostr(uint64_t X, bool isNeg = false)
+{
+  char Buffer[21];
+  char *BufPtr = std::end(Buffer);
+  if (X == 0) *--BufPtr = '0';  // Handle special case...
+  while (X) {
+    *--BufPtr = '0' + char(X % 10);
+    X /= 10;
+  }
+  if (isNeg) *--BufPtr = '-';   // Add negative sign...
+  return std::string(BufPtr, std::end(Buffer));
+}
+std::string baseMethodName(std::string pname)
+{
+    int ind = pname.find("__ENA[");
+    if (ind == -1)
+        ind = pname.find("__RDY[");
+    if (ind > 0)
+        pname = pname.substr(0, ind) + pname.substr(ind + 5);
+    if (endswith(pname, "__ENA") || endswith(pname, "__RDY"))
+        pname = pname.substr(0, pname.length()-5);
+    return pname;
+}
+std::string getRdyName(std::string basename)
+{
+    std::string base = baseMethodName(basename), sub;
+    if (endswith(base, "]")) {
+        int ind = base.find("[");
+        sub = base.substr(ind);
+        base = base.substr(0, ind);
+    }
+    return base + "__RDY" + sub;
+}
+
+std::string getEnaName(std::string basename)
+{
+    std::string base = baseMethodName(basename), sub;
+    if (endswith(base, "]")) {
+        int ind = base.find("[");
+        sub = base.substr(ind);
+        base = base.substr(0, ind);
+    }
+    return base + "__ENA" + sub;
+}
+
+bool isRdyName(std::string name)
+{
+    std::string rname = getRdyName(name);
+    return name == rname;
+}
+
+bool isEnaName(std::string name)
+{
+    std::string rname = getEnaName(name);
+    return name == rname;
+}
+
+std::string trimSpace(std::string arg)
+{
+    int beg = 0, end = arg.length();
+    while (arg[beg] == ' ')
+        beg++;
+    while (arg[end-1] == ' ')
+        end--;
+    return arg.substr(beg, end);
+}
 
 static char VCDBit2Char(VCDBit b) {
     switch(b) {
@@ -77,8 +154,8 @@ void VCDFile::add_signal_value( VCDTimedValue * time_val, VCDSignalHash   hash)
         first = false;
         for (auto itemi = mapName.begin(), iteme = mapName.end(); itemi != iteme; itemi++) {
             for (auto namei = itemi->second->name.begin(), namee = itemi->second->name.end(); namei != namee;) {
-                bool isRdy = namei->find("__RDY") != std::string::npos;
-                bool isEna = namei->find("__ENA") != std::string::npos;
+                bool isRdy = isRdyName(*namei);
+                bool isEna = isEnaName(*namei);
                 if ((*namei).find("$") != std::string::npos && itemi->second->name.size() != 1 && (isRdy || isEna)) {
                     namei = itemi->second->name.erase(namei);
                     continue;
@@ -124,11 +201,28 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
     if (timeval != 0 || (val.find_first_not_of("0") != std::string::npos
                       && val.find_first_not_of("_") != std::string::npos)) {
         if (lasttime != timeval) {
+            for (auto item: currentValue) {
+                 if (isEnaName(item.first) && item.second == "1" && currentValue[getRdyName(item.first)] == "1") {
+                     std::string methodName = baseMethodName(item.first);
+                     std::string sep;
+                     printf("%s(", methodName.c_str());
+                     methodName += "$";
+                     for (auto param: currentValue)
+                          if (startswith(param.first, methodName)) {
+                              printf("%s%s=%s", sep.c_str(), param.first.substr(methodName.length()).c_str(), param.second.c_str());
+                              sep = ", ";
+                          }
+                     printf(") -----------\n");
+                 }
+            }
             printf("--------------------------------------------------- %d ----------------------\n", timeval);
             lasttime = timeval;
         }
         std::string sep;
         auto nameList = mapName[hash];
+        for (auto item: nameList->name) {   // maintain 'current value of signal'
+             currentValue[item] = val;
+        }
         if (nameList->isRdy) {
             for (auto item: nameList->name) {
                  if (timeval != 0 || item.find("__RDY") == std::string::npos) {
