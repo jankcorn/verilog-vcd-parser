@@ -90,7 +90,11 @@ void VCDFile::add_scope( VCDScope * s)
 }
 
 
-std::map<std::string, std::list<std::string>> mapName;
+typedef struct {
+    std::list<std::string> name;
+    bool isRdy;
+} MapNameItem;
+std::map<std::string, MapNameItem *> mapName;
 /*!
 @brief Add a new signal object to the VCD file
 */
@@ -157,13 +161,19 @@ void VCDFile::add_signal( VCDSignal * s)
         stype = "UNK_" + autostr(s->type);
         break;
     };
-//printf("[%s:%d] hash %s ref %s scope %p size %x type %s\n", __FUNCTION__, __LINE__, s->hash.c_str(), s->reference.c_str(), s->scope, s->size, stype.c_str());
+if (stype != "WIRE")
+printf("[%s:%d] hash %s ref %s scope %p size %x type %s\n", __FUNCTION__, __LINE__, s->hash.c_str(), s->reference.c_str(), s->scope, s->size, stype.c_str());
     std::string parent;
     if (s->scope)
         parent = scopeName[s->scope] + "/";
     parent += s->reference;    // combine parent and node names
-    if (parent.find("$") == std::string::npos || mapName[s->hash].size() == 0)  // don't push internal wire names
-        mapName[s->hash].push_back(parent);
+    if (mapName.find(s->hash) == mapName.end())
+        mapName[s->hash] = new MapNameItem({{}, false});
+    bool isRdy = s->reference.find("__RDY") != std::string::npos;
+    if (parent.find("$") == std::string::npos || mapName[s->hash]->name.size() == 0) {  // don't push internal wire names
+        mapName[s->hash]->isRdy |= isRdy;
+        mapName[s->hash]->name.push_back(parent);
+    }
     // Add a timestream entry
     if(val_map.find(s -> hash) == val_map.end()) {
         // Values will be populated later.
@@ -245,11 +255,23 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
         }
         std::string sep;
         auto nameList = mapName[hash];
-        for (auto item: nameList) {
+        if (nameList->isRdy) {
+        for (auto item: nameList->name) {
+             if (timeval != 0 || item.find("__RDY") == std::string::npos) {
+                 printf("%s %50s %s", sep.c_str(), " ", item.c_str());
+                 sep = "\n";
+             }
+        }
+        if (sep != "")
+            printf(" = %8s\n", val.c_str());
+        }
+        else {
+        for (auto item: nameList->name) {
              printf("%s %50s", sep.c_str(), item.c_str());
              sep = "\n";
         }
         printf(" = %8s\n", val.c_str());
+        }
     }
     std::string name;
     if (0)
