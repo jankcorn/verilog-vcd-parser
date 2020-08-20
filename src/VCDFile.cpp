@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <list>
 
 #include "VCDFile.hpp"
         
@@ -43,13 +44,14 @@ VCDFile::~VCDFile(){
 }
 
 
+std::map<VCDScope *, std::string> scopeName;
 /*!
 @brief Add a new scope object to the VCD file
 */
-void VCDFile::add_scope(
-    VCDScope * s
-){
+void VCDFile::add_scope( VCDScope * s)
+{
     std::string stype;
+    std::string parent, name = s->name;
     switch (s->type) {
     case VCD_SCOPE_BEGIN:
         stype = "BEGIN";
@@ -68,23 +70,32 @@ void VCDFile::add_scope(
         break;
     case VCD_SCOPE_ROOT:
         stype = "ROOT";
+        name = "";
         break;
     default:
         stype = "UNK_" + autostr(s->type);
         break;
     }
-printf("[%s:%d] type %s name %s\n", __FUNCTION__, __LINE__, stype.c_str(), s->name.c_str());
+    if (s->parent)
+        parent = scopeName[s->parent];
+    if (parent != "")
+        parent += "/";
+    if (name == "TOP" || name == "VsimTop")
+        name = "";
+    if (startswith(name, "DUT__"))
+        parent = "";
+    scopeName[s] = parent + name;
+//printf("[%s:%d] scope %p parent %p/%s type %s name %s\n", __FUNCTION__, __LINE__, s, s->parent, parent.c_str(), stype.c_str(), s->name.c_str());
     this -> scopes.push_back(s);
 }
 
 
-std::map<std::string, std::string> mapName;
+std::map<std::string, std::list<std::string>> mapName;
 /*!
 @brief Add a new signal object to the VCD file
 */
-void VCDFile::add_signal(
-    VCDSignal * s
-){
+void VCDFile::add_signal( VCDSignal * s)
+{
     this -> signals.push_back(s);
     std::string stype;
     switch(s->type) {
@@ -146,11 +157,13 @@ void VCDFile::add_signal(
         stype = "UNK_" + autostr(s->type);
         break;
     };
-printf("[%s:%d] hash %s ref %s scope %p size %x type %s\n", __FUNCTION__, __LINE__, s->hash.c_str(), s->reference.c_str(), s->scope, s->size, stype.c_str());
-if (mapName[s->hash] != "" && mapName[s->hash] != s->reference) {
-//printf("[%s:%d] ERROR: hash %s was %s now %s\n", __FUNCTION__, __LINE__, s->hash.c_str(), mapName[s->hash].c_str(), s->reference.c_str());
-}
-mapName[s->hash] = s->reference;
+//printf("[%s:%d] hash %s ref %s scope %p size %x type %s\n", __FUNCTION__, __LINE__, s->hash.c_str(), s->reference.c_str(), s->scope, s->size, stype.c_str());
+    std::string parent;
+    if (s->scope)
+        parent = scopeName[s->scope] + "/";
+    parent += s->reference;    // combine parent and node names
+    if (parent.find("$") == std::string::npos || mapName[s->hash].size() == 0)  // don't push internal wire names
+        mapName[s->hash].push_back(parent);
     // Add a timestream entry
     if(val_map.find(s -> hash) == val_map.end()) {
         // Values will be populated later.
@@ -189,7 +202,6 @@ void VCDFile::add_signal_value(
     VCDTimedValue * time_val,
     VCDSignalHash   hash
 ){
-    std::string name = mapName[hash];
     std::string val;
     static int lasttime = 0;
     int timeval = time_val->time;
@@ -228,11 +240,18 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
     if (timeval != 0 || (val.find_first_not_of("0") != std::string::npos
                       && val.find_first_not_of("_") != std::string::npos)) {
         if (lasttime != timeval) {
-            printf("---------------------------------------- %d ------------------------------------------\n", timeval);
+            printf("--------------------------------------------------- %d ----------------------\n", timeval);
             lasttime = timeval;
         }
-        printf(" %40s = %8s\n", name.c_str(), val.c_str());
+        std::string sep;
+        auto nameList = mapName[hash];
+        for (auto item: nameList) {
+             printf("%s %50s", sep.c_str(), item.c_str());
+             sep = "\n";
+        }
+        printf(" = %8s\n", val.c_str());
     }
+    std::string name;
     if (0)
     if (!startswith(name, "CLK")
      && name != "waitForEnq"
