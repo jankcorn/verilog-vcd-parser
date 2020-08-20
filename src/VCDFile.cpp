@@ -6,49 +6,31 @@
 
 bool filterENARDY=true;
 
-//! Instance a new VCD file container.
-VCDFile::VCDFile(){
-
-}
-
-//! Destructor
-VCDFile::~VCDFile(){
-
-    // Delete signals and scopes.
-
-    for (VCDScope * scope : this -> scopes) {
-
-        for (VCDSignal * signal : scope -> signals) {
-            delete signal;
-        }
-
-        delete scope;
-    }
-
-    // Delete signal values.
-
-    for(auto hash_val = this -> val_map.begin();
-             hash_val != this -> val_map.end();
-             ++hash_val)
-    {
-        for(auto vals = hash_val -> second -> begin();
-                 vals != hash_val -> second -> end();
-                 ++vals)
-        {
-            delete (*vals) -> value;
-            delete *vals;
-        }
-
-        delete hash_val -> second;
-    }
-
-}
-
+typedef struct {
+    std::list<std::string> name;
+    bool isRdy;
+    bool isEna;
+    bool used;
+} MapNameItem;
+std::map<std::string, MapNameItem *> mapName;
 
 std::map<VCDScope *, std::string> scopeName;
-/*!
-@brief Add a new scope object to the VCD file
-*/
+std::map<std::string, std::string> mapValue;
+
+static char VCDBit2Char(VCDBit b) {
+    switch(b) {
+        case(VCD_0):
+            return '0';
+        case(VCD_1):
+            return '1';
+        case(VCD_Z):
+            return 'Z';
+        case(VCD_X):
+        default:
+            return 'X';
+    }
+}
+
 void VCDFile::add_scope( VCDScope * s)
 {
     std::string parent, name = s->name;
@@ -65,16 +47,6 @@ void VCDFile::add_scope( VCDScope * s)
     this -> scopes.push_back(s);
 }
 
-
-typedef struct {
-    std::list<std::string> name;
-    bool isRdy;
-    bool used;
-} MapNameItem;
-std::map<std::string, MapNameItem *> mapName;
-/*!
-@brief Add a new signal object to the VCD file
-*/
 void VCDFile::add_signal( VCDSignal * s)
 {
     this -> signals.push_back(s);
@@ -88,11 +60,9 @@ void VCDFile::add_signal( VCDSignal * s)
         mapName[s->hash] = new MapNameItem({{}, false, false});
     bool isRdy = s->reference.find("__RDY") != std::string::npos;
     bool isEna = s->reference.find("__ENA") != std::string::npos;
-    if (!filterENARDY || isRdy || isEna)
-    if (parent.find("$") == std::string::npos || mapName[s->hash]->name.size() == 0) {  // don't push internal wire names
-        mapName[s->hash]->isRdy |= isRdy;
-        mapName[s->hash]->name.push_back(parent);
-    }
+    mapName[s->hash]->isRdy |= isRdy;
+    mapName[s->hash]->isEna |= isEna;
+    mapName[s->hash]->name.push_back(parent);
     // Add a timestream entry
     if(val_map.find(s -> hash) == val_map.end()) {
         // Values will be populated later.
@@ -100,40 +70,24 @@ void VCDFile::add_signal( VCDSignal * s)
     }
 }
 
-
-/*!
-*/
-VCDScope * VCDFile::get_scope(
-    VCDScopeName name
-){
-        return nullptr;
-}
-
-
-/*!
-@brief Add a new signal value to the VCD file, tagged by time.
-*/
-    static char VCDBit2Char(VCDBit b) {
-        switch(b) {
-            case(VCD_0):
-                return '0';
-            case(VCD_1):
-                return '1';
-            case(VCD_Z):
-                return 'Z';
-            case(VCD_X):
-            default:
-                return 'X';
-        }
-    }
-std::map<std::string, std::string> mapValue;
-void VCDFile::add_signal_value(
-    VCDTimedValue * time_val,
-    VCDSignalHash   hash
-){
+void VCDFile::add_signal_value( VCDTimedValue * time_val, VCDSignalHash   hash)
+{
+    static bool first = true;
     std::string val;
     static int lasttime = 0;
     int timeval = time_val->time;
+
+    if (first) {
+        first = false;
+        for (auto itemi = mapName.begin(), iteme = mapName.end(); itemi != iteme; itemi++) {
+            for (auto namei = itemi->second->name.begin(), namee = itemi->second->name.end(); namei != namee;) {
+                if ((*namei).find("$") != std::string::npos && itemi->second->name.size() != 1 && (itemi->second->isRdy || itemi->second->isEna))
+                    namei = itemi->second->name.erase(namei);
+                else
+                    namei++;
+            }
+        }
+    }
     switch (time_val->value->get_type()) {
     case VCD_SCALAR:
         val = VCDBit2Char(time_val->value->get_value_bit());
@@ -211,92 +165,7 @@ break;
             }
         }
     }
-    std::string name;
-    if (0)
-    if (!startswith(name, "CLK")
-     && name != "waitForEnq"
-     && name != "buffer[:]"
-     && name != "remain[:]"
-     && name != "v[:]"
-     && name != "indication$enq$len[:]"
-     && !startswith(name, "in$enq")
-     && !startswith(name, "out$enq")
-     && !startswith(name, "beat")) {
-        static int lastTime = -1;
-        int thisTime = (int) time_val->time;
-        if (thisTime) {
-            if (thisTime != lastTime) {
-                for (auto item: mapValue)
-                     printf(" %s = %s", item.first.c_str(), item.second.c_str());
-                printf("\n[%5d]", thisTime);
-                mapValue.clear();
-            }
-            mapValue[name] = val;
-            //printf(" %s = %s", name.c_str(), val.c_str());
-        }
-        lastTime = thisTime;
-    }
     this -> val_map[hash] -> push_back(time_val);
-}
-
-
-/*!
-*/
-std::vector<VCDTime>* VCDFile::get_timestamps(){
-    return &this -> times;
-}
-
-
-/*!
-*/
-std::vector<VCDScope*>* VCDFile::get_scopes(){
-    return &this -> scopes;
-}
-
-
-/*!
-*/
-std::vector<VCDSignal*>* VCDFile::get_signals(){
-    return &this -> signals;
-}
-
-
-/*!
-*/
-void VCDFile::add_timestamp( VCDTime time)
-{
-    this -> times.push_back(time);
-}
-
-/*!
-*/
-VCDValue * VCDFile::get_signal_value_at ( VCDSignalHash hash, VCDTime       time)
-{
-    if(this -> val_map.find(hash) == this -> val_map.end()) {
-        return nullptr;
-    }
-
-    VCDSignalValues * vals = this -> val_map[hash];
-
-    if(vals -> size() == 0) {
-        return nullptr;
-    }
-
-    VCDValue * tr = nullptr;
-
-    for(auto it = vals -> begin();
-             it != vals -> end();
-             ++ it) {
-
-        if((*it) -> time <= time) {
-            tr = (*it) -> value;
-        } else {
-            break;
-        }
-    }
-
-    return tr;
-
 }
 
 void VCDFile::done(void)
