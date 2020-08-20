@@ -140,6 +140,7 @@ class VCDFile {
         @brief Return a flattened vector of all signals in the file.
         */
         std::vector<VCDSignal*>* get_signals();
+        void done(void);
 
     protected:
         

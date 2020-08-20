@@ -4,7 +4,7 @@
 
 #include "VCDFile.hpp"
 
-bool filterENARDY = true;
+bool filterENARDY=true;
 
 //! Instance a new VCD file container.
 VCDFile::VCDFile(){
@@ -69,6 +69,7 @@ void VCDFile::add_scope( VCDScope * s)
 typedef struct {
     std::list<std::string> name;
     bool isRdy;
+    bool used;
 } MapNameItem;
 std::map<std::string, MapNameItem *> mapName;
 /*!
@@ -84,7 +85,7 @@ void VCDFile::add_signal( VCDSignal * s)
         parent = scopeName[s->scope] + "/";
     parent += s->reference;    // combine parent and node names
     if (mapName.find(s->hash) == mapName.end())
-        mapName[s->hash] = new MapNameItem({{}, false});
+        mapName[s->hash] = new MapNameItem({{}, false, false});
     bool isRdy = s->reference.find("__RDY") != std::string::npos;
     bool isEna = s->reference.find("__ENA") != std::string::npos;
     if (!filterENARDY || isRdy || isEna)
@@ -174,22 +175,40 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
         std::string sep;
         auto nameList = mapName[hash];
         if (nameList->isRdy) {
-        for (auto item: nameList->name) {
-             if (timeval != 0 || item.find("__RDY") == std::string::npos) {
-                 printf("%s %50s %s", sep.c_str(), " ", item.c_str());
-                 sep = "\n";
-             }
-        }
-        if (sep != "")
-            printf(" = %8s\n", val.c_str());
+            for (auto item: nameList->name) {
+                 if (timeval != 0 || item.find("__RDY") == std::string::npos) {
+                     nameList->used = true;
+                     int len = 50 - item.length();
+                     if (len > 0 && val == "1")
+                          item += std::string("                                                                             ").substr(0, len) + val;
+                     printf("%s %50s %s", sep.c_str(), " ", item.c_str());
+                     sep = "\n";
+break;
+                 }
+            }
+            if (sep != "") {
+                if (val.length() > 1)
+                    printf(" = %8s\n", val.c_str());
+                else
+                    printf("\n");
+            }
         }
         else {
-        for (auto item: nameList->name) {
-             printf("%s %50s", sep.c_str(), item.c_str());
-             sep = "\n";
-        }
-        if (sep != "")
-            printf(" = %8s\n", val.c_str());
+            std::string prefix = " ";
+            if (val == "1")
+                prefix = val;
+            for (auto item: nameList->name) {
+                 nameList->used = true;
+                 printf("%s%s %50s", sep.c_str(), prefix.c_str(), item.c_str());
+                 sep = "\n";
+break;
+            }
+            if (sep != "") {
+                if (val.length() > 1)
+                    printf(" = %8s\n", val.c_str());
+                else
+                    printf("\n");
+            }
         }
     }
     std::string name;
@@ -278,4 +297,20 @@ VCDValue * VCDFile::get_signal_value_at ( VCDSignalHash hash, VCDTime       time
 
     return tr;
 
+}
+
+void VCDFile::done(void)
+{
+    for (auto item: mapName) {
+        if (item.second->used) {
+            std::string start = "*";
+            for (auto name: item.second->name) {
+                if (item.second->isRdy)
+                    printf("%s%50s %s\n", start.c_str(), " ", name.c_str());
+                else
+                    printf("%s%50s\n", start.c_str(), name.c_str());
+                start = " ";
+            }
+        }
+    }
 }

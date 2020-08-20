@@ -82,6 +82,7 @@ int main (int argc, char** argv){
     VCDFileParser parser;
 
     VCDFile * trace = parser.parse_file(infile);
+    trace->done();
 
 printf("\n[%s:%d]DONE\n", __FUNCTION__, __LINE__); return 0;
     if(trace) {
