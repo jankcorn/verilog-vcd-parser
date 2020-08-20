@@ -50,42 +50,17 @@ std::map<VCDScope *, std::string> scopeName;
 */
 void VCDFile::add_scope( VCDScope * s)
 {
-    std::string stype;
     std::string parent, name = s->name;
-    switch (s->type) {
-    case VCD_SCOPE_BEGIN:
-        stype = "BEGIN";
-        break;
-    case VCD_SCOPE_FORK:
-        stype = "FORK";
-        break;
-    case VCD_SCOPE_FUNCTION:
-        stype = "FUNCTION";
-        break;
-    case VCD_SCOPE_MODULE:
-        stype = "MODULE";
-        break;
-    case VCD_SCOPE_TASK:
-        stype = "TASK";
-        break;
-    case VCD_SCOPE_ROOT:
-        stype = "ROOT";
-        name = "";
-        break;
-    default:
-        stype = "UNK_" + autostr(s->type);
-        break;
-    }
     if (s->parent)
         parent = scopeName[s->parent];
     if (parent != "")
         parent += "/";
-    if (name == "TOP" || name == "VsimTop")
+    if (s->type == VCD_SCOPE_ROOT || name == "TOP" || name == "VsimTop")
         name = "";
     if (startswith(name, "DUT__"))
         parent = "";
     scopeName[s] = parent + name;
-//printf("[%s:%d] scope %p parent %p/%s type %s name %s\n", __FUNCTION__, __LINE__, s, s->parent, parent.c_str(), stype.c_str(), s->name.c_str());
+//printf("[%s:%d] scope %p parent %p/%s type %d name %s\n", __FUNCTION__, __LINE__, s, s->parent, parent.c_str(), s->type, s->name.c_str());
     this -> scopes.push_back(s);
 }
 
@@ -101,68 +76,8 @@ std::map<std::string, MapNameItem *> mapName;
 void VCDFile::add_signal( VCDSignal * s)
 {
     this -> signals.push_back(s);
-    std::string stype;
-    switch(s->type) {
-    case VCD_VAR_EVENT:
-        stype = "EVENT";
-        break;
-    case VCD_VAR_INTEGER:
-        stype = "INTEGER";
-        break;
-    case VCD_VAR_PARAMETER:
-        stype = "PARAMETER";
-        break;
-    case VCD_VAR_REAL:
-        stype = "REAL";
-        break;
-    case VCD_VAR_REALTIME:
-        stype = "REALTIME";
-        break;
-    case VCD_VAR_REG:
-        stype = "REG";
-        break;
-    case VCD_VAR_SUPPLY0:
-        stype = "SUPPLY0";
-        break;
-    case VCD_VAR_SUPPLY1:
-        stype = "SUPPLY1";
-        break;
-    case VCD_VAR_TIME:
-        stype = "TIME";
-        break;
-    case VCD_VAR_TRI:
-        stype = "TRI";
-        break;
-    case VCD_VAR_TRIAND:
-        stype = "TRIAND";
-        break;
-    case VCD_VAR_TRIOR:
-        stype = "TRIOR";
-        break;
-    case VCD_VAR_TRIREG:
-        stype = "TRIREG";
-        break;
-    case VCD_VAR_TRI0:
-        stype = "TRI0";
-        break;
-    case VCD_VAR_TRI1:
-        stype = "TRI1";
-        break;
-    case VCD_VAR_WAND:
-        stype = "WAND";
-        break;
-    case VCD_VAR_WIRE:
-        stype = "WIRE";
-        break;
-    case VCD_VAR_WOR:
-        stype = "WOR";
-        break;
-    default:
-        stype = "UNK_" + autostr(s->type);
-        break;
-    };
-if (stype != "WIRE")
-printf("[%s:%d] hash %s ref %s scope %p size %x type %s\n", __FUNCTION__, __LINE__, s->hash.c_str(), s->reference.c_str(), s->scope, s->size, stype.c_str());
+    if (s->type != VCD_VAR_WIRE)
+        printf("[%s:%d] hash %s ref %s scope %p size %x type %d\n", __FUNCTION__, __LINE__, s->hash.c_str(), s->reference.c_str(), s->scope, s->size, s->type);
     std::string parent;
     if (s->scope)
         parent = scopeName[s->scope] + "/";
