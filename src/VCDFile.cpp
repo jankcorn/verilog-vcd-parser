@@ -238,30 +238,26 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
             for (auto item: currentCycle) {
                 std::string name = item.first, value = item.second;
                 if (value != "") {
-#if 1
-        if (isRdyName(item.first)) {
-            if (lasttime > 0) {
-                int len = 50 - name.length();
-                if (len > 0 && value == "1")
-                     name += std::string("                                                                             ").substr(0, len) + value;
-                printf(" %50s %s", " ", name.c_str());
-                if (value.length() > 1)
-                    printf(" = %8s\n", value.c_str());
-                else
-                    printf("\n");
-            }
-        }
-        else {
-            std::string prefix = " ";
-            if (value == "1")
-                prefix = value;
-            printf("%s %50s", prefix.c_str(), name.c_str());
-            if (value.length() > 1)
-                printf(" = %8s\n", value.c_str());
-            else
-                printf("\n");
-        }
-#endif
+                    if (isRdyName(item.first)) {
+                        if (lasttime > 0 && value == "1") {
+                            int len = 50 - name.length();
+                            if (len > 0 && value == "1")
+                                 name += std::string("                                                                             ").substr(0, len) + value;
+                            printf(" %50s %s", " ", name.c_str());
+                            if (value.length() > 1)
+                                printf(" = %8s", value.c_str());
+                            printf("\n");
+                        }
+                    }
+                    else if (isEnaName(item.first) && value == "1") {
+                        std::string prefix = " ";
+                        if (value == "1")
+                            prefix = value;
+                        printf("%s %50s", prefix.c_str(), name.c_str());
+                        if (value.length() > 1)
+                            printf(" = %8s", value.c_str());
+                        printf("\n");
+                    }
                 }
             }
             currentCycle.clear();
@@ -274,44 +270,6 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
              currentValue[item] = val;
              currentCycle[item] = val;
         }
-#if 0
-        if (nameList->isRdy) {
-            for (auto item: nameList->name) {
-                 if (timeval != 0 || item.find("__RDY") == std::string::npos) {
-                     nameList->used = true;
-                     int len = 50 - item.length();
-                     if (len > 0 && val == "1")
-                          item += std::string("                                                                             ").substr(0, len) + val;
-                     printf("%s %50s %s", sep.c_str(), " ", item.c_str());
-                     sep = "\n";
-break;
-                 }
-            }
-            if (sep != "") {
-                if (val.length() > 1)
-                    printf(" = %8s\n", val.c_str());
-                else
-                    printf("\n");
-            }
-        }
-        else {
-            std::string prefix = " ";
-            if (val == "1")
-                prefix = val;
-            for (auto item: nameList->name) {
-                 nameList->used = true;
-                 printf("%s%s %50s", sep.c_str(), prefix.c_str(), item.c_str());
-                 sep = "\n";
-break;
-            }
-            if (sep != "") {
-                if (val.length() > 1)
-                    printf(" = %8s\n", val.c_str());
-                else
-                    printf("\n");
-            }
-        }
-#endif
     }
     this -> val_map[hash] -> push_back(time_val);
 }
