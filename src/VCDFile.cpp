@@ -16,7 +16,7 @@ std::map<std::string, MapNameItem *> mapName;
 
 std::map<VCDScope *, std::string> scopeName;
 std::map<std::string, std::string> mapValue;
-std::map<std::string, std::string> currentValue;
+std::map<std::string, std::string> currentValue, currentCycle;
 
 static bool inline endswith(std::string str, std::string suffix)
 {
@@ -44,6 +44,10 @@ std::string baseMethodName(std::string pname)
     int ind = pname.find("__ENA[");
     if (ind == -1)
         ind = pname.find("__RDY[");
+    if (ind == -1)
+        ind = pname.find("__ENA(");
+    if (ind == -1)
+        ind = pname.find("__RDY(");
     if (ind > 0)
         pname = pname.substr(0, ind) + pname.substr(ind + 5);
     if (endswith(pname, "__ENA") || endswith(pname, "__RDY"))
@@ -54,7 +58,12 @@ std::string getRdyName(std::string basename)
 {
     std::string base = baseMethodName(basename), sub;
     if (endswith(base, "]")) {
-        int ind = base.find("[");
+        int ind = base.rfind("[");
+        sub = base.substr(ind);
+        base = base.substr(0, ind);
+    }
+    else if (endswith(base, ")")) {
+        int ind = base.rfind("(");
         sub = base.substr(ind);
         base = base.substr(0, ind);
     }
@@ -65,7 +74,12 @@ std::string getEnaName(std::string basename)
 {
     std::string base = baseMethodName(basename), sub;
     if (endswith(base, "]")) {
-        int ind = base.find("[");
+        int ind = base.rfind("[");
+        sub = base.substr(ind);
+        base = base.substr(0, ind);
+    }
+    else if (endswith(base, ")")) {
+        int ind = base.rfind("(");
         sub = base.substr(ind);
         base = base.substr(0, ind);
     }
@@ -154,12 +168,14 @@ void VCDFile::add_signal_value( VCDTimedValue * time_val, VCDSignalHash   hash)
         first = false;
         for (auto itemi = mapName.begin(), iteme = mapName.end(); itemi != iteme; itemi++) {
             for (auto namei = itemi->second->name.begin(), namee = itemi->second->name.end(); namei != namee;) {
-                bool isRdy = isRdyName(*namei);
-                bool isEna = isEnaName(*namei);
-                if ((*namei).find("$") != std::string::npos && itemi->second->name.size() != 1 && (isRdy || isEna)) {
+                int slash = namei->rfind("/");
+                int dollar = namei->find("$");
+                if (dollar > 0 && (slash == -1 || dollar < slash) && itemi->second->name.size() != 1) {
                     namei = itemi->second->name.erase(namei);
                     continue;
                 }
+                bool isRdy = isRdyName(*namei);
+                bool isEna = isEnaName(*namei);
                 itemi->second->isRdy |= isRdy;
                 itemi->second->isEna |= isEna;
                 namei++;
@@ -202,19 +218,53 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
                       && val.find_first_not_of("_") != std::string::npos)) {
         if (lasttime != timeval) {
             for (auto item: currentValue) {
-                 if (isEnaName(item.first) && item.second == "1" && currentValue[getRdyName(item.first)] == "1") {
+                 std::string rdyName = getRdyName(item.first);
+                 if (isEnaName(item.first) && item.second == "1" && currentValue[rdyName] == "1") {
+                     currentCycle[item.first] = "";
+                     currentCycle[rdyName] = "";
                      std::string methodName = baseMethodName(item.first);
                      std::string sep;
                      printf("%s(", methodName.c_str());
                      methodName += "$";
                      for (auto param: currentValue)
                           if (startswith(param.first, methodName)) {
+                              currentCycle[param.first] = "";
                               printf("%s%s=%s", sep.c_str(), param.first.substr(methodName.length()).c_str(), param.second.c_str());
                               sep = ", ";
                           }
                      printf(") -----------\n");
                  }
             }
+            for (auto item: currentCycle) {
+                std::string name = item.first, value = item.second;
+                if (value != "") {
+#if 1
+        if (isRdyName(item.first)) {
+            if (lasttime > 0) {
+                int len = 50 - name.length();
+                if (len > 0 && value == "1")
+                     name += std::string("                                                                             ").substr(0, len) + value;
+                printf(" %50s %s", " ", name.c_str());
+                if (value.length() > 1)
+                    printf(" = %8s\n", value.c_str());
+                else
+                    printf("\n");
+            }
+        }
+        else {
+            std::string prefix = " ";
+            if (value == "1")
+                prefix = value;
+            printf("%s %50s", prefix.c_str(), name.c_str());
+            if (value.length() > 1)
+                printf(" = %8s\n", value.c_str());
+            else
+                printf("\n");
+        }
+#endif
+                }
+            }
+            currentCycle.clear();
             printf("--------------------------------------------------- %d ----------------------\n", timeval);
             lasttime = timeval;
         }
@@ -222,7 +272,9 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
         auto nameList = mapName[hash];
         for (auto item: nameList->name) {   // maintain 'current value of signal'
              currentValue[item] = val;
+             currentCycle[item] = val;
         }
+#if 0
         if (nameList->isRdy) {
             for (auto item: nameList->name) {
                  if (timeval != 0 || item.find("__RDY") == std::string::npos) {
@@ -259,6 +311,7 @@ break;
                     printf("\n");
             }
         }
+#endif
     }
     this -> val_map[hash] -> push_back(time_val);
 }
