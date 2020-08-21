@@ -217,6 +217,12 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
     if (timeval != 0 || (val.find_first_not_of("0") != std::string::npos
                       && val.find_first_not_of("_") != std::string::npos)) {
         if (lasttime != timeval) {
+            bool found = false;
+            auto header = [&](void) -> void {
+                if (!found)
+                    printf("--------------------------------------------------- %d ----------------------\n", lasttime);
+                found = true;
+            };
             for (auto item: currentValue) {
                  std::string rdyName = getRdyName(item.first);
                  if (isEnaName(item.first) && item.second == "1" && currentValue[rdyName] == "1") {
@@ -224,6 +230,7 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
                      currentCycle[rdyName] = "";
                      std::string methodName = baseMethodName(item.first);
                      std::string sep;
+                     header();
                      printf("%s(", methodName.c_str());
                      methodName += "$";
                      for (auto param: currentValue)
@@ -243,6 +250,7 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
                             int len = 50 - name.length();
                             if (len > 0 && value == "1")
                                  name += std::string("                                                                             ").substr(0, len) + value;
+                            header();
                             printf(" %50s %s", " ", name.c_str());
                             if (value.length() > 1)
                                 printf(" = %8s", value.c_str());
@@ -253,6 +261,7 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
                         std::string prefix = " ";
                         if (value == "1")
                             prefix = value;
+                        header();
                         printf("%s %50s", prefix.c_str(), name.c_str());
                         if (value.length() > 1)
                             printf(" = %8s", value.c_str());
@@ -261,7 +270,6 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
                 }
             }
             currentCycle.clear();
-            printf("--------------------------------------------------- %d ----------------------\n", timeval);
             lasttime = timeval;
         }
         std::string sep;
