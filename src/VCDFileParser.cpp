@@ -5,10 +5,11 @@
 
 #include "VCDFileParser.hpp"
 
+static bool traceAll;//=true;
 VCDFileParser::VCDFileParser() {
 
-    this -> trace_scanning = false;
-    this -> trace_parsing  = false;
+    this -> trace_scanning = traceAll;
+    this -> trace_parsing  = traceAll;
 
 }
 

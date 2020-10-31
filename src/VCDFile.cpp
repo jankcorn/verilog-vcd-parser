@@ -214,6 +214,8 @@ void VCDFile::add_signal_value( VCDTimedValue * time_val, VCDSignalHash   hash)
     default:
 printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
     }
+//printf("[%s:%d] timeval %x type %d: ", __FUNCTION__, __LINE__, timeval, time_val->value->get_type());
+//printf(" VAL %s\n", val.c_str());
     if (timeval != 0 || (val.find_first_not_of("0") != std::string::npos
                       && val.find_first_not_of("_") != std::string::npos)) {
         if (lasttime != timeval) {
