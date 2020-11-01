@@ -3,6 +3,7 @@
 #include <list>
 
 #include "VCDFile.hpp"
+#define DOLLAR "$"
 
 bool filterENARDY=true;
 
@@ -13,6 +14,7 @@ typedef struct {
     bool used;
 } MapNameItem;
 std::map<std::string, MapNameItem *> mapName;
+std::map<std::string, bool> actionMethod;
 
 std::map<VCDScope *, std::string> scopeName;
 std::map<std::string, std::string> mapValue;
@@ -148,7 +150,7 @@ void VCDFile::add_signal( VCDSignal * s)
         parent = scopeName[s->scope] + "/";
     parent += s->reference;    // combine parent and node names
     if (mapName.find(s->hash) == mapName.end())
-        mapName[s->hash] = new MapNameItem({{}, false, false});
+        mapName[s->hash] = new MapNameItem({{}, false, false, false});
     mapName[s->hash]->name.push_back(parent);
     // Add a timestream entry
     if(val_map.find(s -> hash) == val_map.end()) {
@@ -169,7 +171,7 @@ void VCDFile::add_signal_value( VCDTimedValue * time_val, VCDSignalHash   hash)
         for (auto itemi = mapName.begin(), iteme = mapName.end(); itemi != iteme; itemi++) {
             for (auto namei = itemi->second->name.begin(), namee = itemi->second->name.end(); namei != namee;) {
                 int slash = namei->rfind("/");
-                int dollar = namei->find("$");
+                int dollar = namei->find(DOLLAR);
                 if (dollar > 0 && (slash == -1 || dollar < slash) && itemi->second->name.size() != 1) {
                     namei = itemi->second->name.erase(namei);
                     continue;
@@ -178,6 +180,8 @@ void VCDFile::add_signal_value( VCDTimedValue * time_val, VCDSignalHash   hash)
                 bool isEna = isEnaName(*namei);
                 itemi->second->isRdy |= isRdy;
                 itemi->second->isEna |= isEna;
+                if (isEna)
+                    actionMethod[baseMethodName(*namei)] = true;
                 namei++;
             }
         }
@@ -259,7 +263,8 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
                             printf("\n");
                         }
                     }
-                    else if (isEnaName(item.first) && value == "1") {
+                    else if (isEnaName(item.first)) {
+                        if (value == "1") {
                         std::string prefix = " ";
                         if (value == "1")
                             prefix = value;
@@ -268,6 +273,14 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
                         if (value.length() > 1)
                             printf(" = %8s", value.c_str());
                         printf("\n");
+                        }
+                    }
+                    else {
+                        int ind = name.rfind(DOLLAR);
+                        if (ind == -1 || !actionMethod[name.substr(0, ind)]) {
+                            header();
+                            printf("  %50s = %8s\n", name.c_str(), value.c_str());
+                        }
                     }
                 }
             }
