@@ -168,18 +168,18 @@ void VCDFile::add_signal_value( VCDTimedValue * time_val, VCDSignalHash   hash)
 
     if (first) {
         first = false;
-        for (auto itemi = mapName.begin(), iteme = mapName.end(); itemi != iteme; itemi++) {
-            for (auto namei = itemi->second->name.begin(), namee = itemi->second->name.end(); namei != namee;) {
+        for (auto &itemi : mapName) {
+            for (auto namei = itemi.second->name.begin(), namee = itemi.second->name.end(); namei != namee;) {
                 int slash = namei->rfind("/");
                 int dollar = namei->find(DOLLAR);
-                if (dollar > 0 && (slash == -1 || dollar < slash) && itemi->second->name.size() != 1) {
-                    namei = itemi->second->name.erase(namei);
+                if (dollar > 0 && (slash == -1 || dollar < slash) && itemi.second->name.size() != 1) {
+                    namei = itemi.second->name.erase(namei);
                     continue;
                 }
                 bool isRdy = isRdyName(*namei);
                 bool isEna = isEnaName(*namei);
-                itemi->second->isRdy |= isRdy;
-                itemi->second->isEna |= isEna;
+                itemi.second->isRdy |= isRdy;
+                itemi.second->isEna |= isEna;
                 if (isEna)
                     actionMethod[baseMethodName(*namei)] = true;
                 namei++;
@@ -290,6 +290,8 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
         std::string sep;
         auto nameList = mapName[hash];
         for (auto item: nameList->name) {   // maintain 'current value of signal'
+             if (item == "/CLK" || item == "/CLK_derivedClock" || item == "/CLK_sys_clk")
+                 break;
              currentValue[item] = val;
              currentCycle[item] = val;
         }
