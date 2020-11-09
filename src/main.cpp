@@ -1,17 +1,60 @@
+/*!
+@file
+@brief Definition of the VCDFileParser class
+*/
 
 #include <iostream>
 #include <list>
+#include "VCDTypes.hpp"
+#include "VCDParser.hpp"
 
-#include "VCDFile.hpp"
 #define DOLLAR "$"
+
+static bool traceAll;//=true;
+VCDFileParser::VCDFileParser() {
+    this->trace_scanning = traceAll;
+    this->trace_parsing  = traceAll;
+}
+
+VCDFile * VCDFileParser::parse_file(const std::string &filepath) {
+    this->filepath = filepath;
+    scan_begin();
+    this->fh = new VCDFile();
+    VCDFile * tr = this->fh;
+    this->fh->root_scope = new VCDScope;
+    this->fh->root_scope->name = std::string("$root");
+    this->fh->root_scope->type = VCD_SCOPE_ROOT;
+    this->scopes.push(this->fh->root_scope);
+    tr->add_scope(scopes.top());
+    VCDParser::parser parser(*this);
+    parser.set_debug_level(trace_parsing);
+    int result = parser.parse();
+    scopes.pop();
+    scan_end();
+    if (result == 0 ) {
+        this->fh = nullptr;
+        return tr;
+    } else {
+        tr = nullptr;
+        delete this->fh;
+        return nullptr;
+    }
+}
+
+void vcderror(const VCDParser::location & l, const std::string & m){
+    std::cerr << "line "<< l.begin.line << std::endl;
+    std::cerr << " : "<<m<<std::endl;
+}
+
+void VCDFileParser::error(const std::string & m){
+    std::cerr << " : "<<m<<std::endl;
+}
+
 
 bool filterENARDY=true;
 
 typedef struct {
     std::list<std::string> name;
-    bool isRdy;
-    bool isEna;
-    bool used;
 } MapNameItem;
 std::map<std::string, MapNameItem *> mapName;
 std::map<std::string, bool> actionMethod;
@@ -150,7 +193,7 @@ void VCDFile::add_signal( VCDSignal * s)
         parent = scopeName[s->scope] + "/";
     parent += s->reference;    // combine parent and node names
     if (mapName.find(s->hash) == mapName.end())
-        mapName[s->hash] = new MapNameItem({{}, false, false, false});
+        mapName[s->hash] = new MapNameItem({{}});
     mapName[s->hash]->name.push_back(parent);
     // Add a timestream entry
     if(val_map.find(s -> hash) == val_map.end()) {
@@ -179,11 +222,7 @@ void VCDFile::add_signal_value( VCDTimedValue * time_val, VCDSignalHash   hash)
                     namei = itemi.second->name.erase(namei);
                     continue;
                 }
-                bool isRdy = isRdyName(*namei);
-                bool isEna = isEnaName(*namei);
-                itemi.second->isRdy |= isRdy;
-                itemi.second->isEna |= isEna;
-                if (isEna)
+                if (isEnaName(*namei))
                     actionMethod[baseMethodName(*namei)] = true;
                 namei++;
             }
@@ -304,19 +343,30 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
     this -> val_map[hash] -> push_back(time_val);
 }
 
-void VCDFile::done(void)
-{
-if (0)
-    for (auto item: mapName) {
-        if (item.second->used) {
-            std::string start = "*";
-            for (auto name: item.second->name) {
-                if (item.second->isRdy)
-                    printf("%s%50s %s\n", start.c_str(), " ", name.c_str());
-                else
-                    printf("%s%50s\n", start.c_str(), name.c_str());
-                start = " ";
-            }
+/*!
+@brief Standalone test function to allow testing of the VCD file parser.
+*/
+int main (int argc, char** argv){
+    std::string infile (argv[1]);
+    std::cout << "Parsing " << infile << std::endl;
+    VCDFileParser parser;
+    VCDFile * trace = parser.parse_file(infile);
+printf("\n[%s:%d]DONE\n", __FUNCTION__, __LINE__); return 0;
+    std::cout << "Parse successful." << std::endl;
+    std::cout << "Version:       " << trace->version << std::endl;
+    std::cout << "Date:          " << trace->date << std::endl;
+    std::cout << "Signal count:  " << trace->get_signals()->size() <<std::endl;
+    std::cout << "Times Recorded:" << trace->get_timestamps()->size() << std::endl;
+    // Print out every signal in every scope.
+    for(VCDScope * scope : *trace->get_scopes()) {
+        std::cout << "Scope: "  << scope-> name  << std::endl;
+        for(VCDSignal * signal : scope->signals) {
+            std::cout << "\t" << signal->hash << "\t" << signal->reference;
+            if(signal->size > 1)
+                std::cout << " [" << signal->size << ":0]";
+            std::cout << std::endl;
         }
     }
+    delete trace;
+    return 0;
 }

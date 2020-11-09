@@ -18,9 +18,7 @@ YAC_OBJ         ?= $(BUILD_DIR)/VCDParser.o
 CXXFLAGS        += -I$(BUILD_DIR) -I$(SRC_DIR) -g -std=c++0x
 # -DYYDEBUG=1
 
-VCD_SRC         ?= $(SRC_DIR)/VCDFile.cpp \
-                   $(SRC_DIR)/VCDValue.cpp \
-                   $(SRC_DIR)/VCDFileParser.cpp
+VCD_SRC         ?= $(SRC_DIR)/main.cpp
 
 TEST_APP        ?= $(BUILD_DIR)/vcd-parse
 
