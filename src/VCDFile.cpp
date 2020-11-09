@@ -157,6 +157,9 @@ void VCDFile::add_signal( VCDSignal * s)
         // Values will be populated later.
         val_map[s -> hash] = new VCDSignalValues();
     }
+    if (isEnaName(parent) || isRdyName(parent)) {
+        currentValue[getRdyName(parent)] = "1";
+    }
 }
 
 void VCDFile::add_signal_value( VCDTimedValue * time_val, VCDSignalHash   hash)
@@ -273,6 +276,8 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
                         if (value.length() > 1)
                             printf(" = %8s", value.c_str());
                         printf("\n");
+//std::string rname = getRdyName(item.first);
+//printf("[%s:%d] RDY %s = %s\n", __FUNCTION__, __LINE__, rname.c_str(), currentValue[rname].c_str());
                         }
                     }
                     else {
