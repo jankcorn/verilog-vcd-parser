@@ -15,8 +15,6 @@
 %code requires
 {
     #include "VCDTypes.hpp"
-
-    class VCDFileParser;
 }
 
 %param {VCDFileParser & driver}
@@ -34,10 +32,8 @@
 
 YY_DECL;
 void vcderror(const VCDParser::location & l, const std::string & m);
-
 //! Current time while parsing the VCD file.
 VCDTime current_time = 0;
-
 }
 
 %token                  TOK_BRACKET_O
@@ -107,9 +103,7 @@ simulation_commands:
 
 declaration_command :
     TOK_KW_COMMENT  comment_text     TOK_KW_END
-|   TOK_KW_DATE     date_text        TOK_KW_END {
-    driver.fh->date = $2;
-}
+|   TOK_KW_DATE     date_text        TOK_KW_END { driver.fh->date = $2; }
 |   TOK_KW_ENDDEFINITIONS TOK_KW_END
 |   TOK_KW_SCOPE    scope_type TOK_IDENTIFIER TOK_KW_END {
     // PUSH the current scope stack.
@@ -125,13 +119,8 @@ declaration_command :
     driver.fh->time_resolution = $2;
     driver.fh->time_units      = $3;
 }
-|   TOK_KW_UPSCOPE  TOK_KW_END {
-    // POP the current scope stack.
-    driver.scopes.pop();
-
-}
-|   TOK_KW_VAR      TOK_VAR_TYPE TOK_DECIMAL_NUM TOK_IDENTIFIER reference
-    TOK_KW_END {
+|   TOK_KW_UPSCOPE  TOK_KW_END { driver.scopes.pop(); } // POP the current scope stack.
+|   TOK_KW_VAR      TOK_VAR_TYPE TOK_DECIMAL_NUM TOK_IDENTIFIER reference TOK_KW_END {
     // Add this variable to the current scope.
     VCDSignal * new_signal  = new VCDSignal();
     new_signal->type      = $2;
@@ -142,11 +131,8 @@ declaration_command :
     scope->signals.push_back(new_signal);
     new_signal->scope = scope;
     driver.fh->add_signal(new_signal);
-
 }
-|   TOK_KW_VERSION  version_text TOK_KW_END {
-    driver.fh->version = $2;
-}
+|   TOK_KW_VERSION  version_text TOK_KW_END { driver.fh->version = $2; }
 ;
 
 simulation_command :
@@ -234,58 +220,24 @@ vector_value_change:
 }
 
 reference:
-    TOK_IDENTIFIER {
-    $$ = $1;
-}
-|   TOK_IDENTIFIER TOK_BRACKET_O TOK_DECIMAL_NUM TOK_BRACKET_C{
-    $$ = $1;
-    $$.append("[");
-    $$.append("]");
-}
-|   TOK_IDENTIFIER TOK_BRACKET_O TOK_DECIMAL_NUM TOK_COLON TOK_DECIMAL_NUM
-    TOK_BRACKET_C{
-    $$ = $1;
-    $$.append("[");
-    $$.append(":");
-    $$.append("]");
-}
+    TOK_IDENTIFIER { $$ = $1; }
+|   TOK_IDENTIFIER TOK_BRACKET_O TOK_DECIMAL_NUM TOK_BRACKET_C{ $$ = $1 + "[]"; }
+|   TOK_IDENTIFIER TOK_BRACKET_O TOK_DECIMAL_NUM TOK_COLON TOK_DECIMAL_NUM TOK_BRACKET_C{ $$ = $1 + "[:]"; }
 
 comment_text :
-    %empty  {
-    $$ = std::string("");
-}
-|   TOK_COMMENT_TEXT {
-    $$ = std::string($1);
-}
-|   comment_text TOK_COMMENT_TEXT{
-    $$ = $1;
-    $$.append($2);
-}
+    %empty  { $$ = ""; }
+|   TOK_COMMENT_TEXT { $$ = std::string($1); }
+|   comment_text TOK_COMMENT_TEXT{ $$ = $1 + $2; }
 
 version_text :
-    %empty{
-    $$ = std::string("");
-}
-|   TOK_VERSION_TEXT {
-    $$ = std::string($1);
-}
-|   version_text TOK_VERSION_TEXT {
-    $$ = $1;
-    $$.append($2);
-}
-
+    %empty{ $$ = ""; }
+|   TOK_VERSION_TEXT { $$ = std::string($1); }
+|   version_text TOK_VERSION_TEXT { $$ = $1 + $2; }
 
 date_text:
-    %empty{
-    $$ = std::string("");
-}
-|   TOK_DATE_TEXT {
-    $$ = std::string($1);
-}
-|   date_text TOK_DATE_TEXT {
-    $$ = $1;
-    $$.append($2);
-}
+    %empty{ $$ = ""; }
+|   TOK_DATE_TEXT { $$ = std::string($1); }
+|   date_text TOK_DATE_TEXT { $$ = $1 + $2; }
 
 %%
 
