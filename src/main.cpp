@@ -61,7 +61,12 @@ std::map<std::string, bool> actionMethod;
 
 std::map<VCDScope *, std::string> scopeName;
 std::map<std::string, std::string> mapValue;
-std::map<std::string, std::string> currentValue, currentCycle;
+typedef struct {
+    std::string value;
+    bool seen;
+} CurrentValueType;
+std::map<std::string, CurrentValueType> currentValue;
+std::map<std::string, std::string> currentCycle;
 
 static bool inline endswith(std::string str, std::string suffix)
 {
@@ -201,7 +206,7 @@ void VCDFile::add_signal( VCDSignal * s)
         val_map[s -> hash] = new VCDSignalValues();
     }
     if (isEnaName(parent) || isRdyName(parent)) {
-        currentValue[getRdyName(parent)] = "1";
+        currentValue[getRdyName(parent)] = {"1", false};
     }
 }
 
@@ -273,7 +278,8 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
             };
             for (auto item: currentValue) {
                  std::string rdyName = getRdyName(item.first);
-                 if (isEnaName(item.first) && item.second == "1" && currentValue[rdyName] == "1") {
+                 if (isEnaName(item.first) && item.second.value == "1" && item.second.seen && currentValue[rdyName].value == "1") {
+                     currentValue[item.first].seen = false;
                      currentCycle[item.first] = "";
                      currentCycle[rdyName] = "";
                      std::string methodName = baseMethodName(item.first);
@@ -284,7 +290,7 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
                      for (auto param: currentValue)
                           if (startswith(param.first, methodName)) {
                               currentCycle[param.first] = "";
-                              printf("%s%s=%s", sep.c_str(), param.first.substr(methodName.length()).c_str(), param.second.c_str());
+                              printf("%s%s=%s", sep.c_str(), param.first.substr(methodName.length()).c_str(), param.second.value.c_str());
                               sep = ", ";
                           }
                      printf(") -----------\n");
@@ -336,7 +342,7 @@ printf("[%s:%d]ERRRRROROR\n", __FUNCTION__, __LINE__);
         for (auto item: nameList->name) {   // maintain 'current value of signal'
              if (item == "/CLK" || item == "/CLK_derivedClock" || item == "/CLK_sys_clk")
                  break;
-             currentValue[item] = val;
+             currentValue[item] = {val, true};
              currentCycle[item] = val;
         }
     }
